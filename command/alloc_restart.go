@@ -31,7 +31,7 @@ General Options:
 
 Restart Specific Options:
 
-  -verbose
+  --verbose, -v
     Show full information.
 `
 	return strings.TrimSpace(helpText)
@@ -44,7 +44,7 @@ func (c *AllocRestartCommand) Run(args []string) int {
 
 	flags := c.Meta.FlagSet(c.Name(), FlagSetClient)
 	flags.Usage = func() { c.Ui.Output(c.Help()) }
-	flags.BoolVar(&verbose, "verbose", false, "")
+	flags.BoolVarP(&verbose, "verbose", "v", false, "")
 
 	if err := flags.Parse(args); err != nil {
 		return 1

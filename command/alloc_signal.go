@@ -31,10 +31,10 @@ General Options:
 
 Signal Specific Options:
 
-  -s
+  --signal, -s
     Specify the signal that the selected tasks should receive.
 
-  -verbose
+  --verbose, -v
     Show full information.
 `
 	return strings.TrimSpace(helpText)
@@ -48,8 +48,8 @@ func (c *AllocSignalCommand) Run(args []string) int {
 
 	flags := c.Meta.FlagSet(c.Name(), FlagSetClient)
 	flags.Usage = func() { c.Ui.Output(c.Help()) }
-	flags.BoolVar(&verbose, "verbose", false, "")
-	flags.StringVar(&signal, "s", "SIGKILL", "")
+	flags.BoolVarP(&verbose, "verbose", "v", false, "")
+	flags.StringVarP(&signal, "signal", "s", "SIGKILL", "")
 
 	if err := flags.Parse(args); err != nil {
 		return 1

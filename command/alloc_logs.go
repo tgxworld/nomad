@@ -35,31 +35,31 @@ General Options:
 
 Logs Specific Options:
 
-  -stderr
+  --stderr
     Display stderr logs.
 
-  -verbose
+  --verbose, -v
     Show full information.
 
-  -task <task-name>
+  --task <task-name>
     Sets the task to view the logs.
 
-  -job <job-id>
+  --job <job-id>
     Use a random allocation from the specified job ID.
 
-  -f
+  --follow, -f
     Causes the output to not stop when the end of the logs are reached, but
     rather to wait for additional output.
 
-  -tail
+  --tail
     Show the logs contents with offsets relative to the end of the logs. If no
     offset is given, -n is defaulted to 10.
 
-  -n
+  --lines, -n
     Sets the tail location in best-efforted number of lines relative to the end
     of the logs.
 
-  -c
+  --bytes, -c
     Sets the tail location in number of bytes relative to the end of the logs.
 
   Note that the -no-color option applies to Nomad's own output. If the task's
@@ -77,14 +77,14 @@ func (l *AllocLogsCommand) Synopsis() string {
 func (c *AllocLogsCommand) AutocompleteFlags() complete.Flags {
 	return mergeAutocompleteFlags(c.Meta.AutocompleteFlags(FlagSetClient),
 		complete.Flags{
-			"-stderr":  complete.PredictNothing,
-			"-verbose": complete.PredictNothing,
-			"-task":    complete.PredictAnything,
-			"-job":     complete.PredictAnything,
-			"-f":       complete.PredictNothing,
-			"-tail":    complete.PredictAnything,
-			"-n":       complete.PredictAnything,
-			"-c":       complete.PredictAnything,
+			"--stderr":  complete.PredictNothing,
+			"--verbose": complete.PredictNothing,
+			"--task":    complete.PredictAnything,
+			"--job":     complete.PredictAnything,
+			"--follow":  complete.PredictNothing,
+			"--tail":    complete.PredictAnything,
+			"--lines":   complete.PredictAnything,
+			"--bytes":   complete.PredictAnything,
 		})
 }
 
@@ -112,13 +112,13 @@ func (l *AllocLogsCommand) Run(args []string) int {
 
 	flags := l.Meta.FlagSet(l.Name(), FlagSetClient)
 	flags.Usage = func() { l.Ui.Output(l.Help()) }
-	flags.BoolVar(&verbose, "verbose", false, "")
+	flags.BoolVarP(&verbose, "verbose", "v", false, "")
 	flags.BoolVar(&job, "job", false, "")
 	flags.BoolVar(&tail, "tail", false, "")
-	flags.BoolVar(&follow, "f", false, "")
+	flags.BoolVarP(&follow, "follow", "f", false, "")
 	flags.BoolVar(&stderr, "stderr", false, "")
-	flags.Int64Var(&numLines, "n", -1, "")
-	flags.Int64Var(&numBytes, "c", -1, "")
+	flags.Int64VarP(&numLines, "lines", "n", -1, "")
+	flags.Int64VarP(&numBytes, "bytes", "c", -1, "")
 	flags.StringVar(&task, "task", "", "")
 
 	if err := flags.Parse(args); err != nil {

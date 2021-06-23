@@ -748,6 +748,9 @@ github.com/softlayer/softlayer-go/filter
 github.com/softlayer/softlayer-go/services
 github.com/softlayer/softlayer-go/session
 github.com/softlayer/softlayer-go/sl
+# github.com/spf13/pflag v1.0.5
+## explicit
+github.com/spf13/pflag
 # github.com/stretchr/objx v0.2.0
 ## explicit
 github.com/stretchr/objx
