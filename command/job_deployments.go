@@ -28,19 +28,19 @@ General Options:
 
 Deployments Options:
 
-  -json
+  --json, -j
     Output the deployments in a JSON format.
 
-  -t
+  --template, -t
     Format and display deployments using a Go template.
 
-  -latest
+  --latest
     Display the latest deployment only.
 
-  -verbose
+  --verbose, -v
     Display full information.
 
-  -all
+  --all
     Display all deployments matching the job ID, including those
     from an older instance of the job.
 `
@@ -54,11 +54,11 @@ func (c *JobDeploymentsCommand) Synopsis() string {
 func (c *JobDeploymentsCommand) AutocompleteFlags() complete.Flags {
 	return mergeAutocompleteFlags(c.Meta.AutocompleteFlags(FlagSetClient),
 		complete.Flags{
-			"-json":    complete.PredictNothing,
-			"-t":       complete.PredictAnything,
-			"-latest":  complete.PredictNothing,
-			"-verbose": complete.PredictNothing,
-			"-all":     complete.PredictNothing,
+			"--json":    complete.PredictNothing,
+			"--t":       complete.PredictAnything,
+			"--latest":  complete.PredictNothing,
+			"--verbose": complete.PredictNothing,
+			"--all":     complete.PredictNothing,
 		})
 }
 
@@ -83,20 +83,64 @@ func (c *JobDeploymentsCommand) Run(args []string) int {
 	var json, latest, verbose, all bool
 	var tmpl string
 
-	flags := c.Meta.FlagSet(c.Name(), FlagSetClient)
-	flags.Usage = func() { c.Ui.Output(c.Help()) }
-	flags.BoolVar(&latest, "latest", false, "")
-	flags.BoolVar(&verbose, "verbose", false, "")
-	flags.BoolVar(&all, "all", false, "")
-	flags.BoolVar(&json, "json", false, "")
-	flags.StringVar(&tmpl, "t", "", "")
+	flags := FlagList{
+		Bools: []BoolFlagInfo{
+			{
+				ptr:   &latest,
+				value: false,
+				BaseFlagInfo: BaseFlagInfo{
+					name:  "latest",
+					short: "",
+					usage: "",
+				},
+			},
+			{
+				ptr:   &verbose,
+				value: false,
+				BaseFlagInfo: BaseFlagInfo{
+					name:  "verbose",
+					short: "v",
+					usage: "",
+				},
+			},
+			{
+				ptr:   &all,
+				value: false,
+				BaseFlagInfo: BaseFlagInfo{
+					name:  "all",
+					short: "",
+					usage: "",
+				},
+			},
+			{
+				ptr:   &json,
+				value: false,
+				BaseFlagInfo: BaseFlagInfo{
+					name:  "json",
+					short: "j",
+					usage: "",
+				},
+			},
+		},
+		Strings: []StringFlagInfo{
+			{
+				ptr:   &tmpl,
+				value: "",
+				BaseFlagInfo: BaseFlagInfo{
+					name:  "template",
+					short: "t",
+					usage: "",
+				},
+			},
+		},
+	}
 
-	if err := flags.Parse(args); err != nil {
+	args, err := parseFlags(args, flags, &c.Meta, c.Name(), c.Help())
+	if err != nil {
 		return 1
 	}
 
 	// Check that we got exactly one node
-	args = flags.Args()
 	if l := len(args); l != 1 {
 		c.Ui.Error("This command takes one argument: <job>")
 		c.Ui.Error(commandErrorText(c))

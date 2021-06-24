@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/nomad/api"
+	flaghelper "github.com/hashicorp/nomad/helper/flags"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/colorstring"
 	"github.com/posener/complete"
@@ -63,6 +64,7 @@ type Meta struct {
 // server settings on the commands that don't talk to a server.
 func (m *Meta) FlagSet(n string, fs FlagSetFlags) *flag.FlagSet {
 	f := flag.NewFlagSet(n, flag.ContinueOnError)
+	// flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 
 	// FlagSetClient is used to enable the settings for specifying
 	// client connectivity options.
@@ -269,11 +271,106 @@ func generalOptionsUsage(usageOpts usageOptsFlags) string {
 	return strings.TrimSpace(helpText)
 }
 
-// funcVar is a type of flag that accepts a function that is the string given
-// by the user.
-type funcVar func(s string) error
+// Defines types for passing flag info to create flag sets
+// Used to create flag sets using posix flags and also the non-posix flags
+// Putting this here for now since this breaks if it goes into the flaghelper??
+type BaseFlagInfo struct {
+	name  string
+	usage string
+	short string
+}
 
-func (f funcVar) Set(s string) error { return f(s) }
-func (f funcVar) String() string     { return "" }
-func (f funcVar) Type() string       { return "string" }
-func (f funcVar) IsBoolFlag() bool   { return false }
+type BoolFlagInfo struct {
+	BaseFlagInfo
+	ptr   *bool
+	value bool
+}
+
+// This is a regular string flag, not the flaghelper StringFlag type
+type StringFlagInfo struct {
+	BaseFlagInfo
+	ptr   *string
+	value string
+}
+
+// flaghelper string flag info
+type FHStringFlagInfo struct {
+	BaseFlagInfo
+	ptr *flaghelper.StringFlag
+}
+
+type FlagList struct {
+	Bools         []BoolFlagInfo
+	Strings       []StringFlagInfo
+	FHStringFlags []FHStringFlagInfo
+}
+
+// Generates the flag sets using posix flags
+func genNewFlags(flags FlagList, meta *Meta, name string, help string) *flag.FlagSet {
+	flagSet := meta.FlagSet(name, FlagSetClient)
+	flagSet.Usage = func() { meta.Ui.Output(help) }
+	for _, b := range flags.Bools {
+		if b.short != "" {
+			flagSet.BoolVarP(b.ptr, b.name, b.short, b.value, b.usage)
+		} else {
+			flagSet.BoolVar(b.ptr, b.name, b.value, b.usage)
+		}
+	}
+
+	for _, s := range flags.Strings {
+		if s.short != "" {
+			flagSet.StringVarP(s.ptr, s.name, s.short, s.value, s.usage)
+		} else {
+			flagSet.StringVar(s.ptr, s.name, s.value, s.usage)
+		}
+	}
+
+	for _, sf := range flags.FHStringFlags {
+		if sf.short != "" {
+			flagSet.VarP(sf.ptr, sf.name, sf.short, sf.usage)
+		} else {
+			flagSet.Var(sf.ptr, sf.name, sf.usage)
+		}
+	}
+
+	return flagSet
+}
+
+// Essentially the same function as genNewFlags, but this uses the standard
+// go flag library to maintain backwards compatibility
+func genOldFlags(flags FlagList, meta *Meta, name string) *goflag.FlagSet {
+	flagSet := meta.OldFlagSet(name, FlagSetClient)
+	for _, b := range flags.Bools {
+		flagSet.BoolVar(b.ptr, b.name, b.value, b.usage)
+	}
+	for _, s := range flags.Strings {
+		flagSet.StringVar(s.ptr, s.name, s.value, s.usage)
+	}
+	for _, sf := range flags.FHStringFlags {
+		flagSet.Var(sf.ptr, sf.name, sf.usage)
+	}
+
+	return flagSet
+}
+
+// Parses the flags and returns the args. It assumes posix flags first, and then if that throws an error,
+// falls back to non-posix flags. Assumes either/or, not mixing/matching
+func parseFlags(args []string, flags FlagList, meta *Meta, name string, help string) ([]string, error) {
+	oldFlags := false
+	newFlagSet := genNewFlags(flags, meta, name, help)
+	var oldFlagSet *goflag.FlagSet
+	if err := newFlagSet.Parse(args); err != nil {
+		oldFlagSet = genOldFlags(flags, meta, name)
+
+		if e := oldFlagSet.Parse(args); e != nil {
+			return nil, err
+		}
+		meta.Ui.Warn("Parsing error, falling back to non-posix flags")
+		oldFlags = true
+	}
+
+	if oldFlags {
+		return oldFlagSet.Args(), nil
+	}
+	return newFlagSet.Args(), nil
+}

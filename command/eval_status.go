@@ -29,16 +29,16 @@ General Options:
 
 Eval Status Options:
 
-  -monitor
+  --monitor, -m
     Monitor an outstanding evaluation
 
-  -verbose
+  --verbose, -v
     Show full information.
 
-  -json
+  --json, -j
     Output the evaluation in its JSON format.
 
-  -t
+  --template, -t
     Format and display evaluation using a Go template.
 `
 
@@ -52,10 +52,10 @@ func (c *EvalStatusCommand) Synopsis() string {
 func (c *EvalStatusCommand) AutocompleteFlags() complete.Flags {
 	return mergeAutocompleteFlags(c.Meta.AutocompleteFlags(FlagSetClient),
 		complete.Flags{
-			"-json":    complete.PredictNothing,
-			"-monitor": complete.PredictNothing,
-			"-t":       complete.PredictAnything,
-			"-verbose": complete.PredictNothing,
+			"--json":     complete.PredictNothing,
+			"--monitor":  complete.PredictNothing,
+			"--template": complete.PredictAnything,
+			"--verbose":  complete.PredictNothing,
 		})
 }
 
@@ -84,19 +84,56 @@ func (c *EvalStatusCommand) Run(args []string) int {
 	var monitor, verbose, json bool
 	var tmpl string
 
-	flags := c.Meta.FlagSet(c.Name(), FlagSetClient)
-	flags.Usage = func() { c.Ui.Output(c.Help()) }
-	flags.BoolVar(&monitor, "monitor", false, "")
-	flags.BoolVar(&verbose, "verbose", false, "")
-	flags.BoolVar(&json, "json", false, "")
-	flags.StringVar(&tmpl, "t", "", "")
-
-	if err := flags.Parse(args); err != nil {
-		return 1
+	flags := FlagList{
+		Bools: []BoolFlagInfo{
+			{
+				ptr:   &monitor,
+				value: false,
+				BaseFlagInfo: BaseFlagInfo{
+					name:  "monitor",
+					short: "m",
+					usage: "",
+				},
+			},
+			{
+				ptr:   &verbose,
+				value: false,
+				BaseFlagInfo: BaseFlagInfo{
+					name:  "verbose",
+					short: "v",
+					usage: "",
+				},
+			},
+			{
+				ptr:   &json,
+				value: false,
+				BaseFlagInfo: BaseFlagInfo{
+					name:  "json",
+					short: "j",
+					usage: "",
+				},
+			},
+		},
+		Strings: []StringFlagInfo{
+			{
+				ptr:   &tmpl,
+				value: "",
+				BaseFlagInfo: BaseFlagInfo{
+					name:  "template",
+					short: "t",
+					usage: "",
+				},
+			},
+		},
 	}
 
-	// Check that we got exactly one evaluation ID
-	args = flags.Args()
+	// Parse flags and check that we got exactly one evaluation ID
+	// I just copied the comment re. eval ID but there's no check on len args
+	// Outdated comment? Or should there be a check?
+	args, err := parseFlags(args, flags, &c.Meta, c.Name(), c.Help())
+	if err != nil {
+		return 1
+	}
 
 	// Get the HTTP client
 	client, err := c.Meta.Client()

@@ -93,19 +93,53 @@ func (c *JobStatusCommand) Name() string { return "status" }
 func (c *JobStatusCommand) Run(args []string) int {
 	var short bool
 
-	flags := c.Meta.FlagSet(c.Name(), FlagSetClient)
-	flags.Usage = func() { c.Ui.Output(c.Help()) }
-	flags.BoolVar(&short, "short", false, "")
-	flags.BoolVar(&c.evals, "evals", false, "")
-	flags.BoolVar(&c.allAllocs, "all-allocs", false, "")
-	flags.BoolVarP(&c.verbose, "verbose", "v", false, "")
+	flags := FlagList{
+		Bools: []BoolFlagInfo{
+			{
+				ptr:   &short,
+				value: false,
+				BaseFlagInfo: BaseFlagInfo{
+					name:  "short",
+					short: "",
+					usage: "",
+				},
+			},
+			{
+				ptr:   &c.evals,
+				value: false,
+				BaseFlagInfo: BaseFlagInfo{
+					name:  "evals",
+					short: "",
+					usage: "",
+				},
+			},
+			{
+				ptr:   &c.allAllocs,
+				value: false,
+				BaseFlagInfo: BaseFlagInfo{
+					name:  "all-allocs",
+					short: "",
+					usage: "",
+				},
+			},
+			{
+				ptr:   &c.verbose,
+				value: false,
+				BaseFlagInfo: BaseFlagInfo{
+					name:  "verbose",
+					short: "v",
+					usage: "",
+				},
+			},
+		},
+	}
 
-	if err := flags.Parse(args); err != nil {
+	args, err := parseFlags(args, flags, &c.Meta, c.Name(), c.Help())
+	if err != nil {
 		return 1
 	}
 
 	// Check that we either got no jobs or exactly one.
-	args = flags.Args()
 	if len(args) > 1 {
 		c.Ui.Error("This command takes either no arguments or one: <job>")
 		c.Ui.Error(commandErrorText(c))

@@ -2,7 +2,9 @@ package command
 
 import (
 	"encoding/json"
-	"flag"
+
+	// "flag"
+
 	"fmt"
 	"os"
 	"regexp"
@@ -157,52 +159,141 @@ func (c *JobRunCommand) AutocompleteArgs() complete.Predictor {
 func (c *JobRunCommand) Name() string { return "job run" }
 
 func (c *JobRunCommand) Run(args []string) int {
-	oldFlags := false
-
 	var detach, verbose, output, override, preserveCounts bool
 	var checkIndexStr, consulToken, consulNamespace, vaultToken, vaultNamespace string
 	var varArgs, varFiles flaghelper.StringFlag
 
-	flagSet := c.Meta.FlagSet(c.Name(), FlagSetClient)
-	flagSet.Usage = func() { c.Ui.Output(c.Help()) }
-	flagSet.BoolVarP(&detach, "detach", "d", false, "")
-	flagSet.BoolVarP(&verbose, "verbose", "v", false, "")
-	flagSet.BoolVarP(&output, "output", "o", false, "")
-	flagSet.BoolVar(&override, "policy-override", false, "")
-	flagSet.BoolVar(&preserveCounts, "preserve-counts", false, "")
-	flagSet.BoolVar(&c.JobGetter.hcl1, "hcl1", false, "")
-	flagSet.StringVar(&checkIndexStr, "check-index", "", "")
-	flagSet.StringVar(&consulToken, "consul-token", "", "")
-	flagSet.StringVar(&consulNamespace, "consul-namespace", "", "")
-	flagSet.StringVar(&vaultToken, "vault-token", "", "")
-	flagSet.StringVar(&vaultNamespace, "vault-namespace", "", "")
-	flagSet.Var(&varArgs, "var", "")
-	flagSet.Var(&varFiles, "var-file", "")
+	boolFlags := []BoolFlagInfo{
+		{
+			ptr:   &detach,
+			value: false,
+			BaseFlagInfo: BaseFlagInfo{
+				name:  "detach",
+				usage: "",
+				short: "d",
+			},
+		},
+		{
+			ptr:   &verbose,
+			value: false,
+			BaseFlagInfo: BaseFlagInfo{
+				name:  "verbose",
+				usage: "",
+				short: "v",
+			},
+		},
+		{
+			ptr:   &output,
+			value: false,
+			BaseFlagInfo: BaseFlagInfo{
+				name:  "output",
+				usage: "",
+				short: "o",
+			},
+		},
+		{
+			ptr:   &override,
+			value: false,
+			BaseFlagInfo: BaseFlagInfo{
+				name:  "policy-override",
+				usage: "",
+				short: "",
+			},
+		},
+		{
+			ptr:   &preserveCounts,
+			value: false,
+			BaseFlagInfo: BaseFlagInfo{
+				name:  "preserve-counts",
+				usage: "",
+				short: "",
+			},
+		},
+		{
+			ptr:   &c.JobGetter.hcl1,
+			value: false,
+			BaseFlagInfo: BaseFlagInfo{
+				name:  "hcl1",
+				usage: "",
+				short: "",
+			},
+		},
+	}
 
-	var oldFlagSet *flag.FlagSet
-	if err := flagSet.Parse(args); err != nil {
-		// Check whether the old single-dash flags are used
-		oldFlagSet := c.Meta.OldFlagSet(c.Name(), FlagSetClient)
-		oldFlagSet.BoolVar(&detach, "detach", false, "")
-		oldFlagSet.BoolVar(&verbose, "verbose", false, "")
-		oldFlagSet.BoolVar(&output, "output", false, "")
-		oldFlagSet.BoolVar(&override, "policy-override", false, "")
-		oldFlagSet.BoolVar(&preserveCounts, "preserve-counts", false, "")
-		oldFlagSet.BoolVar(&c.JobGetter.hcl1, "hcl1", false, "")
-		oldFlagSet.StringVar(&checkIndexStr, "check-index", "", "")
-		oldFlagSet.StringVar(&consulToken, "consul-token", "", "")
-		oldFlagSet.StringVar(&consulNamespace, "consul-namespace", "", "")
-		oldFlagSet.StringVar(&vaultToken, "vault-token", "", "")
-		oldFlagSet.StringVar(&vaultNamespace, "vault-namespace", "", "")
-		oldFlagSet.Var(&varArgs, "var", "")
-		oldFlagSet.Var(&varFiles, "var-file", "")
+	stringFlags := []StringFlagInfo{
+		{
+			ptr:   &checkIndexStr,
+			value: "",
+			BaseFlagInfo: BaseFlagInfo{
+				name:  "check-index",
+				usage: "",
+				short: "",
+			},
+		},
+		{
+			ptr:   &consulToken,
+			value: "",
+			BaseFlagInfo: BaseFlagInfo{
+				name:  "consul-token",
+				usage: "",
+				short: "",
+			},
+		},
+		{
+			ptr:   &consulNamespace,
+			value: "",
+			BaseFlagInfo: BaseFlagInfo{
+				name:  "consul-namespace",
+				usage: "",
+				short: "",
+			},
+		},
+		{
+			ptr:   &vaultToken,
+			value: "",
+			BaseFlagInfo: BaseFlagInfo{
+				name:  "vault-token",
+				usage: "",
+				short: "",
+			},
+		},
+		{
+			ptr:   &vaultNamespace,
+			value: "",
+			BaseFlagInfo: BaseFlagInfo{
+				name:  "vault-namespace",
+				usage: "",
+				short: "",
+			},
+		},
+	}
 
-		if e := oldFlagSet.Parse(args); e != nil {
-			return 1
-		}
+	fhStringFlags := []FHStringFlagInfo{
+		{
+			ptr: &varArgs,
+			BaseFlagInfo: BaseFlagInfo{
+				name:  "var",
+				usage: "",
+			}},
 
-		oldFlags = true
-		c.Ui.Warn("Parsing error, falling back to non-posix flags")
+		{
+			ptr: &varFiles,
+			BaseFlagInfo: BaseFlagInfo{
+				name:  "var-file",
+				usage: "",
+			}},
+	}
+
+	flags := FlagList{
+		Bools:         boolFlags,
+		Strings:       stringFlags,
+		FHStringFlags: fhStringFlags,
+	}
+
+	// Parse flags and return args
+	args, err := parseFlags(args, flags, &c.Meta, c.Name(), c.Help())
+	if err != nil {
+		return 1
 	}
 
 	// Truncate the id unless full length is requested
@@ -212,11 +303,6 @@ func (c *JobRunCommand) Run(args []string) int {
 	}
 
 	// Check that we got exactly one argument
-	if oldFlags {
-		args = oldFlagSet.Args()
-	} else {
-		args = flagSet.Args()
-	}
 	if len(args) != 1 {
 		c.Ui.Error("This command takes one argument: <path>")
 		c.Ui.Error(commandErrorText(c))

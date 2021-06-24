@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	flaghelper "github.com/hashicorp/nomad/helper/flags"
 	"github.com/posener/complete"
 )
 
@@ -69,7 +70,7 @@ func (c *ACLTokenUpdateCommand) Run(args []string) int {
 	flags.StringVar(&name, "name", "", "")
 	flags.StringVar(&tokenType, "type", "client", "")
 	flags.BoolVar(&global, "global", false, "")
-	flags.Var((funcVar)(func(s string) error {
+	flags.Var((flaghelper.FuncVar)(func(s string) error {
 		policies = append(policies, s)
 		return nil
 	}), "policy", "")
